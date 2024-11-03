@@ -4,16 +4,16 @@ use crate::components::{Customer, Item, Order};
 use crate::components::slot::Slot;
 
 #[allow(dead_code)]
-pub struct Market<'a, 'b> {
-    name: &'a str,
+pub struct Market {
+    name: String,
     market_type: MarketType,
-    slots: Vec<Slot<'b>>,
+    slots: Vec<Slot>,
     customers: Vec<Uuid>,
 }
 
 #[allow(dead_code)]
-impl<'a, 'b> Market<'a, 'b> {
-    pub fn new(name: &'a str, market_type: MarketType) -> Self {
+impl Market {
+    pub fn new(name: String, market_type: MarketType) -> Self {
         Self {
             name,
             market_type,
@@ -32,7 +32,7 @@ impl<'a, 'b> Market<'a, 'b> {
     }
 
     pub fn buy(&mut self, customer: &Customer, item: &Item, amount: u32) -> Result<(), String> {
-        if self.customer_authorized(customer) {
+        if !self.customer_authorized(customer) {
             return Err(String::from("Customer is not authorized"));
         }
 
@@ -44,7 +44,7 @@ impl<'a, 'b> Market<'a, 'b> {
     }
 
     pub fn sell(&mut self, customer: &Customer, item: &Item, amount: u32) -> Result<(), String> {
-        if self.customer_authorized(customer) {
+        if !self.customer_authorized(customer) {
             return Err(String::from("Customer is not authorized"));
         }
 
@@ -77,7 +77,7 @@ impl<'a, 'b> Market<'a, 'b> {
         Err(String::from("Item is not registered"))
     }
 
-    pub fn register_item(&mut self, item: &Item<'b>, price_base: f32) -> Result<(), String> {
+    pub fn register_item(&mut self, item: &Item, price_base: f32) -> Result<(), String> {
         if price_base <= 1.0 {
             return Err(String::from("Price base must be greater or equal to 1.0"));
         }
@@ -92,7 +92,7 @@ impl<'a, 'b> Market<'a, 'b> {
         Ok(())
     }
 
-    pub fn unregister_item(&mut self, item: &Item<'b>) -> Result<(), String> {
+    pub fn unregister_item(&mut self, item: &Item) -> Result<(), String> {
         if self.remove_slot(item).is_ok() {
             return Ok(());
         }
@@ -122,8 +122,8 @@ impl<'a, 'b> Market<'a, 'b> {
         self.customers.iter().any(|x: &Uuid | *x == customer.uuid())
     }
 
-    fn find_slot(&mut self, item: &Item) -> Option<&mut Slot<'b>> {
-        for slot in &mut self.slots {
+    fn find_slot(&mut self, item: &Item) -> Option<&mut Slot> {
+        for slot in self.slots.iter_mut() {
             if slot.item_uuid() == item.uuid() {
                 return Some(slot);
             }
