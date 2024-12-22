@@ -5,6 +5,9 @@ edition = "2021"
 
 [dependencies]
 serde = { version = "1.0.204", features = ["derive"] }
+tokio = { version = "1", features = ["full"] }
+tokio-postgres = "0.7"
+dotenv = "0.15"
 
 [dependencies.uuid]
 version = "1.10.0"
