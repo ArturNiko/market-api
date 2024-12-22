@@ -1,5 +1,12 @@
+# Environment variables
 .env
 
-/target
+# Logs
+logs/*
 
-/logs/*
+# Runtime data
+target
+
+# IDEs
+.idea
+.vscode
