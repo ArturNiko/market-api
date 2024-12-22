@@ -1,7 +1,10 @@
 use uuid::Uuid;
 
-use crate::components::{Customer, Item, Order};
-use crate::components::slot::Slot;
+use crate::components::{Customer};
+use crate::components::{Item};
+
+// Item, Order, Slot
+use super::{Order, Slot};
 
 #[allow(dead_code)]
 pub struct Market {

@@ -1,8 +1,6 @@
 use uuid::Uuid;
 
-use crate::components::{Item, Order};
-use crate::components::order::OrderType;
-
+use crate::components::{Item, Order, OrderType};
 
 #[allow(dead_code)]
 pub struct Slot {

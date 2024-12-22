@@ -10,7 +10,7 @@ fn main() -> Result<(), String> {
     println!("Nickname: {}", customer.nickname());
     market.show_slot(&item)?;
 
-    market.buy(&customer, &item, 14)?;
+    market.buy(&customer, &item, 164)?;
 
     market.show_slot(&item)?;
 

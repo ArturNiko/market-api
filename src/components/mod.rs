@@ -1,13 +1,7 @@
-mod customer;
+pub mod customer;
+pub mod market;
 mod item;
-mod market;
-mod order;
-mod slot;
 
 pub use customer::Customer;
-pub use item::Item;
-pub use market::Market;
-pub use order::Order;
-
-pub use market::MarketType;
-pub use order::OrderType;
+pub use market::{Market, MarketType, Order, OrderType};
+pub use item::*;
