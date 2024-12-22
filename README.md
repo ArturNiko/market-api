@@ -1,4 +1,4 @@
-## Installation
+## Required Installation
 
 ### Ubuntu
 ```
@@ -13,7 +13,7 @@ brew link --force libpq
 ```
 
 
-## Running
+## Setup
 ```
 # Run docker
 docker-compose up -d
