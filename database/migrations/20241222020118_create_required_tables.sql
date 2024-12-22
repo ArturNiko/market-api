@@ -1,37 +1,51 @@
--- Table for items
+-- Enable the uuid-ossp extension
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
 CREATE TABLE "items" (
-                         id          SERIAL PRIMARY KEY,
-                         name        VARCHAR(255) NOT NULL,
-                         base_price  DECIMAL(10, 2) NOT NULL,
-                         description TEXT NOT NULL,
-                         created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                         updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name        VARCHAR(255) NOT NULL,
+    base_price  DECIMAL(10, 2) NOT NULL,
+    description TEXT NOT NULL,
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Table for users
-CREATE TABLE "user" (
-                        id         SERIAL PRIMARY KEY,
-                        name       VARCHAR(255) NOT NULL,
-                        email      VARCHAR(255) NOT NULL,
-                        password   VARCHAR(255) NOT NULL,
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+CREATE TABLE "users" (
+    id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name       VARCHAR(255) NOT NULL,
+    email      VARCHAR(255) NOT NULL,
+    password   VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Table for orders
 CREATE TABLE "orders" (
-                          id          SERIAL PRIMARY KEY,
-                          user_id     INT NOT NULL,
-                          type        VARCHAR(4) CHECK (type IN ('buy', 'sell')) NOT NULL,
-                          price       DECIMAL(10, 2),
-                          created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                          updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id     INT NOT NULL,
+    type        VARCHAR(5) CHECK (type IN ('buy', 'sell')) NOT NULL,
+    price       DECIMAL(10, 2),
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Table for markets
 CREATE TABLE "markets" (
-                           id         SERIAL PRIMARY KEY,
-                           name       VARCHAR(255) NOT NULL,
-                           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name       VARCHAR(255) NOT NULL,
+    type       VARCHAR(8) CHECK (type IN ('private', 'public')) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "customers" (
+     id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+     balance    DECIMAL(10, 2) DEFAULT 0,
+     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "markets_customers_rel" (
+    market_id UUID NOT NULL,
+    customer_id UUID NOT NULL,
+    CONSTRAINT fk_markets_customers_rel_market_id FOREIGN KEY (market_id) REFERENCES "markets"(id) ON DELETE CASCADE,
+    CONSTRAINT fk_markets_customers_rel_customer_id FOREIGN KEY (customer_id) REFERENCES "customers"(id) ON DELETE CASCADE
 );
