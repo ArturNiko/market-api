@@ -10,9 +10,9 @@ pub struct Customer {
 
 #[allow(dead_code)]
 impl Customer {
-    pub fn new(nickname: String) -> Self {
+    pub fn new(nickname: &str) -> Self {
         Self {
-            nickname,
+            nickname: nickname.to_string(),
             uuid: Uuid::new_v4(),
         }
     }

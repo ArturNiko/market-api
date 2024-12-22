@@ -21,11 +21,12 @@ MIGRATIONS_FOLDER="./database/migrations"
 
 for migration_file in "$MIGRATIONS_FOLDER"/*.sql
 do
-  psql -h localhost -U "$POSTGRES_USER" -d "$POSTGRES_DB" -f "$migration_file" -v ON_ERROR_STOP=1 > /dev/null 2>&1
+  ERROR_MESSAGE=$(psql -h localhost -U "$POSTGRES_USER" -d "$POSTGRES_DB" -f "$migration_file" -v ON_ERROR_STOP=1 2>&1)
 
   # check if migration returned an error (non-zero status code)
   if [ $? -ne 0 ]; then
     echo "Error applying migration: $migration_file"
+    echo "Error message: $ERROR_MESSAGE"
     exit 1
   else
     echo "Successfully applied migration: $migration_file"

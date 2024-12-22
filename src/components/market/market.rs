@@ -16,9 +16,9 @@ pub struct Market {
 
 #[allow(dead_code)]
 impl Market {
-    pub fn new(name: String, market_type: MarketType) -> Self {
+    pub fn new(name: &str, market_type: MarketType) -> Self {
         Self {
-            name,
+            name: name.to_string(),
             market_type,
             slots: vec![],
             customers: vec![],

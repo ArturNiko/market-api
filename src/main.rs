@@ -1,10 +1,14 @@
 mod components;
+mod app;
 
 use components::{Customer, Item, Market, Order};
 use components::{MarketType, OrderType};
+use app::*;
 
+fn main() -> Result<(), tokio_postgres::Error> {
+    main2()?;
 
-fn main() -> Result<(), String> {
+    /**
     let (mut market, customer, item) = init()?;
 
     println!("Nickname: {}", customer.nickname());
@@ -14,18 +18,20 @@ fn main() -> Result<(), String> {
 
     market.show_slot(&item)?;
 
+    market.sell(&customer, &item, 10)?;
+    **/
     Ok(())
 }
 
 fn init() -> Result<(Market, Customer, Item), String> {
     let mut market: Market = Market::new(
-        String::from("market"),
+        "market",
         MarketType::CLOSED,
     );
 
-    let customer: Customer = Customer::new(String::from("customer"));
+    let customer: Customer = Customer::new("customer");
 
-    let item = Item::new(String::from("vodka"));
+    let item = Item::new("vodka");
 
     market.authorize_customer(&customer)?;
     market.register_item(&item, 20.0)?;

@@ -10,9 +10,9 @@ pub struct Item {
 
 #[allow(dead_code)]
 impl Item {
-    pub fn new(name: String) -> Self {
+    pub fn new(name: &str) -> Self {
         Self {
-            name,
+            name: name.to_string(),
             uuid: Uuid::new_v4()
         }
     }
