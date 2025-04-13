@@ -1,24 +1,27 @@
 use dotenv::dotenv;
 use std::env;
-use std::io::ErrorKind::InvalidInput;
-use tokio_postgres::{Client, Error, NoTls, Row};
 
-pub struct Connection {
-    client: Client, // Private client
+use tokio_postgres::{ Client, Error, NoTls, Row, Statement };
+use tokio_postgres::types::ToSql;
+
+#[allow(dead_code)]
+pub struct DB {
+    client: Client,
 }
 
+#[allow(dead_code)]
 pub struct QueryBuilder<'a> {
-    connection: &'a Connection,
+    connection: &'a DB,
     table: String,
-    columns: Option<Vec<String>>, // Columns for insertion
-    values: Option<Vec<String>>,  // Values for insertion
-    condition: Option<String>,
+    columns: Option<Vec<String>>,
+    values: Option<Vec<Box<dyn ToSql + Sync>>>,
+    conditions: Option<Vec<String>>,
+    logical_operator: Option<String>,
     limit: Option<usize>,
-    updates: Option<Vec<(String, String)>>,
 }
 
-impl Connection {
-    /// Creates a new database connection
+#[allow(dead_code)]
+impl DB {
     pub async fn new() -> Result<Self, Error> {
         dotenv().ok();
 
@@ -44,29 +47,60 @@ impl Connection {
     }
 
     /// Starts a new query builder
-    pub fn query(&self, table: &str) -> QueryBuilder {
+    pub fn table(&self, table: &str) -> QueryBuilder {
         QueryBuilder {
             connection: self,
             table: table.to_string(),
             columns: None,
             values: None,
-            condition: None,
+            conditions: None,
+            logical_operator: None,
             limit: None,
-            updates: None,
         }
     }
 }
 
+#[allow(dead_code)]
 impl<'a> QueryBuilder<'a> {
-    pub fn values(mut self, columns: Vec<&str>, values: Vec<&str>) -> Self {
+    pub fn columns(mut self, columns: Vec<&str>) -> Self {
         self.columns = Some(columns.into_iter().map(|col| col.to_string()).collect());
-        self.values = Some(values.into_iter().map(|val| val.to_string()).collect());
+        self
+    }
+    pub fn values(mut self, values: Vec<Box<dyn ToSql + Sync>>) -> Self {
+        self.values = Some(values);
         self
     }
 
     pub fn where_condition(mut self, condition: &str) -> Self {
-        self.condition = Some(condition.to_string());
+        if self.conditions.is_none() {
+            self.conditions = Some(Vec::new());
+        }
+        self.conditions.as_mut().unwrap().push(condition.to_string());
         self
+    }
+
+    pub fn and_condition(mut self, condition: &str) -> Self {
+        self.logical_operator = Some("AND".to_string());
+        self = self.where_condition(condition); // Add the condition to the list
+        self
+    }
+
+    pub fn or_condition(mut self, condition: &str) -> Self {
+        self.logical_operator = Some("OR".to_string());
+        self = self.where_condition(condition); // Add the condition to the list
+        self
+    }
+
+    fn build_conditions(&self) -> Option<String> {
+        if let Some(conds) = &self.conditions {
+            if conds.is_empty() {
+                return None;
+            }
+            let operator = self.logical_operator.as_deref().unwrap_or("AND");
+            Some(conds.join(&format!(" {} ", operator)))
+        } else {
+            None
+        }
     }
 
     pub fn limit(mut self, limit: usize) -> Self {
@@ -74,15 +108,75 @@ impl<'a> QueryBuilder<'a> {
         self
     }
 
-    pub async fn select(self) -> Result<Vec<Row>, Error> {
-        let columns = self
+    pub async fn insert(self) -> Result<Row, Error> {
+        let columns: String = self.columns.unwrap().join(", ");
+        let values: Vec<Box<dyn ToSql + Sync>> = self.values.unwrap();
+
+        let params: Vec<&(dyn ToSql + Sync)> = values.iter().map(|val| val.as_ref() as _).collect();
+        let placeholders: String = (1..=values.len())
+            .map(|i| format!("${}", i))
+            .collect::<Vec<String>>()
+            .join(", ");
+
+
+        let query = format!(
+            "INSERT INTO {} ({}) VALUES ({}) RETURNING *",
+            self.table, columns, placeholders
+        );
+
+        let statement: Statement = self.connection.client.prepare(&query).await?;
+        let row: Row = self.connection.client.query_one(&statement, &params).await?;
+
+        Ok(row)
+    }
+
+    pub async fn update(self) -> Result<u64, Error> {
+        let columns: String = self.columns.as_ref().unwrap().join(", ");
+        let values: &Vec<Box<dyn ToSql + Sync>> = self.values.as_ref().unwrap();
+
+        let params: Vec<&(dyn ToSql + Sync)> = values.iter().map(|val| val.as_ref() as _).collect();
+        let placeholders: String = (1..=values.len())
+            .map(|i| format!("${}", i))
+            .collect::<Vec<String>>()
+            .join(", ");
+
+        let set_clause: String = self
             .columns
+            .as_ref()
+            .unwrap()
+            .iter()
+            .enumerate()
+            .map(|(i, col)| format!("{} = ${}", col, i + 1))
+            .collect::<Vec<String>>()
+            .join(", ");
+
+
+        let mut query = format!("UPDATE {} SET {}", self.table, set_clause);
+
+        println!("Query: {}", query);
+
+        if let Some(condition) = self.build_conditions() {
+            query.push_str(&format!(" WHERE {}", condition));
+        }
+
+        println!("Query: {}", query);
+        let statement = self.connection.client.prepare(&query).await?;
+        let rows_affected = self.connection.client.execute(&statement, &params).await?;
+
+        Ok(rows_affected)
+    }
+
+    // implement placeholders
+    pub async fn select(self) -> Result<Vec<Row>, Error> {
+        let columns: String = self
+            .columns
+            .as_ref()
             .map(|cols| cols.join(", "))
             .unwrap_or_else(|| "*".to_string());
 
         let mut query = format!("SELECT {} FROM {}", columns, self.table);
 
-        if let Some(condition) = self.condition {
+        if let Some(condition) = self.build_conditions() {
             query.push_str(&format!(" WHERE {}", condition));
         }
 
@@ -90,70 +184,17 @@ impl<'a> QueryBuilder<'a> {
             query.push_str(&format!(" LIMIT {}", limit));
         }
 
-        let statement = self.connection.client.prepare(&query).await?;
-        let new_rows = self.connection.client.query(&statement, &[]).await?;
+        let statement: Statement = self.connection.client.prepare(&query).await?;
+        let rows: Vec<Row> = self.connection.client.query(&statement, &[]).await?;
 
-        Ok(new_rows)
+        Ok(rows)
     }
 
-    pub async fn insert(self) -> Result<u64, Error> {
-        if self.columns.is_none() || self.values.is_none() {
-            return Err(Error::from(
-                std::io::Error::new(InvalidInput, "Columns or values missing for INSERT query").into()
-            ));
-        }
-
-        let columns = self.columns.unwrap().join(", ");
-        let placeholders: Vec<String> = (1..=self.values.as_ref().unwrap().len())
-            .map(|i| format!("${}", i))
-            .collect();
-        let placeholders = placeholders.join(", ");
-        let values = self.values.unwrap();
-
-        let query = format!(
-            "INSERT INTO {} ({}) VALUES ({})",
-            self.table, columns, placeholders
-        );
-
-        let statement = self.connection.client.prepare(&query).await?;
-        let params: Vec<&(dyn tokio_postgres::types::ToSql + Sync)> =
-            values.iter().map(|val| val as _).collect();
-        let rows_affected = self.connection.client.execute(&statement, &params).await?;
-
-        Ok(rows_affected)
-    }
-
+    // implement placeholders
     pub async fn delete(self) -> Result<u64, Error> {
         let mut query = format!("DELETE FROM {}", self.table);
 
-        if let Some(condition) = self.condition {
-            query.push_str(&format!(" WHERE {}", condition));
-        }
-
-        let statement = self.connection.client.prepare(&query).await?;
-        let rows_affected = self.connection.client.execute(&statement, &[]).await?;
-
-        Ok(rows_affected)
-    }
-
-    pub async fn update(self) -> Result<u64, Error> {
-        if self.updates.is_none() {
-            return Err(Error::from(
-                std::io::Error::new(InvalidInput, "No updates specified for UPDATE query").into(),
-            ));
-        }
-
-        let updates = self
-            .updates
-            .unwrap()
-            .into_iter()
-            .map(|(col, value)| format!("{} = '{}'", col, value))
-            .collect::<Vec<_>>()
-            .join(", ");
-
-        let mut query = format!("UPDATE {} SET {}", self.table, updates);
-
-        if let Some(condition) = self.condition {
+        if let Some(condition) = self.build_conditions() {
             query.push_str(&format!(" WHERE {}", condition));
         }
 
