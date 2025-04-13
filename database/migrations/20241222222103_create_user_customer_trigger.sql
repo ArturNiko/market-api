@@ -2,7 +2,7 @@ CREATE FUNCTION create_user_customer_trigger()
 RETURNS TRIGGER AS $$
 BEGIN
     INSERT INTO "customers" ("user_id")
-    VALUES (0);
+    VALUES (NEW."id");
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;

@@ -12,7 +12,7 @@ CREATE TABLE "items" (
 
 CREATE TABLE "users" (
     id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    name       VARCHAR(255) NOT NULL,
+    nickname   VARCHAR(255) NOT NULL,
     email      VARCHAR(255) NOT NULL,
     password   VARCHAR(255) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -29,16 +29,18 @@ CREATE TABLE "orders" (
 );
 
 CREATE TABLE "markets" (
-    id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    name       VARCHAR(255) NOT NULL,
-    type       VARCHAR(8) CHECK (type IN ('private', 'public')) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name        VARCHAR(255) NOT NULL,
+    description TEXT NULL,
+    type        VARCHAR(8) CHECK (type IN ('public', 'private')) NOT NULL,
+    tax_percent DECIMAL(5, 2) DEFAULT 0,
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE "customers" (
      id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-     balance    DECIMAL(10, 2) DEFAULT 0,
+     balance    DECIMAL(10, 2) DEFAULT 100.00,
      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
