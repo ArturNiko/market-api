@@ -23,29 +23,31 @@ fi
 
 # Export password to avoid prompting
 export PGPASSWORD="$POSTGRES_PASSWORD"
-
 SEEDERS_FOLDER="./database/seeders"
 
-for seed_file in "$SEEDERS_FOLDER"/*.sql
-do
-  echo -e "${CYAN}Applying seed: $seed_file...${NC}"
-  ERROR_MESSAGE=$(psql -h localhost -U "$POSTGRES_USER" -d "$POSTGRES_DB" -f "$seed_file" -v ON_ERROR_STOP=1 2>&1)
 
-  # Check if seed  exited an error (non-zero status code)
-  if [ $? -ne 0 ]; then
-    echo -e "${RED}Error applying seed: $seed_file${NC}"
-    echo -e "${YELLOW}Error message: $ERROR_MESSAGE${NC}"
+shopt -s nullglob
+seed_files=("$SEEDERS_FOLDER"/*.sql)
 
-    # Unset the password for security
-    unset PGPASSWORD
+if [ ${#seed_files[@]} -eq 0 ]; then
+  echo -e "${YELLOW}No seed files found in $SEEDERS_FOLDER.${NC}"
+else
+  for seed_file in "${seed_files[@]}"; do
+    echo -e "${CYAN}Applying seed: $seed_file...${NC}"
+    ERROR_MESSAGE=$(psql -h localhost -U "$POSTGRES_USER" -d "$POSTGRES_DB" -f "$seed_file" -v ON_ERROR_STOP=1 2>&1)
 
-    exit 1
-  else
-    echo -e "${GREEN}Successfully applied seed: $seed_file${NC}"
-  fi
-done
+    if [ $? -ne 0 ]; then
+      echo -e "${RED}Error applying seed: $seed_file${NC}"
+      echo -e "${YELLOW}Error message: $ERROR_MESSAGE${NC}"
+      unset PGPASSWORD
+      exit 1
+    else
+      echo -e "${GREEN}Successfully applied seed: $seed_file${NC}"
+    fi
+  done
 
-echo -e "${GREEN}All seeds have been successfully applied.${NC}"
+  echo -e "${GREEN}All seeds have been successfully applied.${NC}"
+fi
 
 # Unset the password for security
 unset PGPASSWORD

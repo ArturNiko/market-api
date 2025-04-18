@@ -30,7 +30,7 @@ if [[ -z "$POSTGRES_USER" || -z "$POSTGRES_DB" ]]; then
 fi
 
 
-echo -e "${CYAN}Resetting database...${NC}"
+echo -e "${CYAN}Clearing database...${NC}"
 ERROR_MESSAGE=$(docker exec -it "$POSTGRES_ID" psql -U "$POSTGRES_USER" -d postgres -c "DROP DATABASE $POSTGRES_DB;" 2>&1)
 
 if [ $? -ne 0 ]; then
@@ -48,10 +48,14 @@ if [ $? -ne 0 ]; then
 fi
 
 
-echo -e "${GREEN}Database reset successfully.${NC}"
+echo -e "${GREEN}Database cleared successfully.${NC}"
+
+printf "\n\n"
 
 #execute migrations
 ./scripts/database/migrate.sh
+
+printf "\n\n"
 
 if [ $? -ne 0 ]; then
   exit 1
@@ -60,4 +64,6 @@ fi
 #execute seeds
 ./scripts/database/seed.sh
 
-print -p "${GREEN}Database reset successfully.${NC}"
+printf "\n\n"
+
+echo -e "${GREEN}Database reset successfully.${NC}"
