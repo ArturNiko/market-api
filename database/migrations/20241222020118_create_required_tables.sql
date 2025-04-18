@@ -19,14 +19,6 @@ CREATE TABLE "users" (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE "orders" (
-    id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id     INT NOT NULL,
-    type        VARCHAR(5) CHECK (type IN ('buy', 'sell')) NOT NULL,
-    price       DECIMAL(10, 2),
-    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
 
 CREATE TABLE "markets" (
     id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -34,6 +26,20 @@ CREATE TABLE "markets" (
     description TEXT NULL,
     type        VARCHAR(8) CHECK (type IN ('public', 'private')) NOT NULL,
     tax_percent DECIMAL(5, 2) DEFAULT 0,
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "orders" (
+    id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    type        VARCHAR(5) CHECK (type IN ('buy', 'sell')) NOT NULL,
+    price       DECIMAL(10, 2),
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "slot" (
+    id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
