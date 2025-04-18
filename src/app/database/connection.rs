@@ -1,12 +1,13 @@
 use dotenv::dotenv;
 use std::env;
-
-use tokio_postgres::{ Client, Error, NoTls, Row, Statement };
+use tokio::task::JoinHandle;
+use tokio_postgres::{Client, Error, NoTls, Row, Statement };
 use tokio_postgres::types::ToSql;
 
 #[allow(dead_code)]
 pub struct DB {
     client: Client,
+    handle: JoinHandle<()>,
 }
 
 #[allow(dead_code)]
@@ -37,13 +38,17 @@ impl DB {
 
         let (client, connection) = tokio_postgres::connect(&connection_string, NoTls).await?;
 
-        tokio::spawn(async move {
+        let handle: JoinHandle<()> = tokio::spawn(async move {
             if let Err(e) = connection.await {
                 eprintln!("Connection error: {}", e);
             }
         });
 
-        Ok(Self { client })
+
+        Ok(Self {
+            client,
+            handle,
+        })
     }
 
     /// Starts a new query builder
@@ -109,19 +114,14 @@ impl<'a> QueryBuilder<'a> {
     }
 
     pub async fn insert(self) -> Result<Row, Error> {
-        let columns: String = self.columns.unwrap().join(", ");
-        let values: Vec<Box<dyn ToSql + Sync>> = self.values.unwrap();
+        let columns: String = self.columns.as_ref().unwrap().join(", ");
+        let values: &Vec<Box<dyn ToSql + Sync>> = self.values.as_ref().unwrap();
 
         let params: Vec<&(dyn ToSql + Sync)> = values.iter().map(|val| val.as_ref() as _).collect();
-        let placeholders: String = (1..=values.len())
-            .map(|i| format!("${}", i))
-            .collect::<Vec<String>>()
-            .join(", ");
-
 
         let query = format!(
             "INSERT INTO {} ({}) VALUES ({}) RETURNING *",
-            self.table, columns, placeholders
+            self.table, columns, self.build_placeholders(Command::Insert)
         );
 
         let statement: Statement = self.connection.client.prepare(&query).await?;
@@ -131,35 +131,16 @@ impl<'a> QueryBuilder<'a> {
     }
 
     pub async fn update(self) -> Result<u64, Error> {
-        let columns: String = self.columns.as_ref().unwrap().join(", ");
         let values: &Vec<Box<dyn ToSql + Sync>> = self.values.as_ref().unwrap();
 
         let params: Vec<&(dyn ToSql + Sync)> = values.iter().map(|val| val.as_ref() as _).collect();
-        let placeholders: String = (1..=values.len())
-            .map(|i| format!("${}", i))
-            .collect::<Vec<String>>()
-            .join(", ");
 
-        let set_clause: String = self
-            .columns
-            .as_ref()
-            .unwrap()
-            .iter()
-            .enumerate()
-            .map(|(i, col)| format!("{} = ${}", col, i + 1))
-            .collect::<Vec<String>>()
-            .join(", ");
-
-
-        let mut query = format!("UPDATE {} SET {}", self.table, set_clause);
-
-        println!("Query: {}", query);
+        let mut query = format!("UPDATE {} SET {}", self.table, self.build_placeholders(Command::Update));
 
         if let Some(condition) = self.build_conditions() {
             query.push_str(&format!(" WHERE {}", condition));
         }
 
-        println!("Query: {}", query);
         let statement = self.connection.client.prepare(&query).await?;
         let rows_affected = self.connection.client.execute(&statement, &params).await?;
 
@@ -191,7 +172,7 @@ impl<'a> QueryBuilder<'a> {
     }
 
     // implement placeholders
-    pub async fn delete(self) -> Result<u64, Error> {
+    pub async fn delete(mut self) -> Result<u64, Error> {
         let mut query = format!("DELETE FROM {}", self.table);
 
         if let Some(condition) = self.build_conditions() {
@@ -203,4 +184,44 @@ impl<'a> QueryBuilder<'a> {
 
         Ok(rows_affected)
     }
+
+    fn build_placeholders(&self, command: Command) -> String {
+        match command {
+            Command::Insert => {
+                if let Some(values) = &self.values {
+                        (1..=self.values.as_ref().unwrap().len())
+                        .map(|i| format!("${}", i))
+                        .collect::<Vec<String>>()
+                        .join(", ")
+                } else {
+                    String::new()
+                }
+            }
+            Command::Update => {
+                if let Some(columns) = &self.columns {
+                    self
+                        .columns
+                        .as_ref()
+                        .unwrap()
+                        .iter()
+                        .enumerate()
+                        .map(|(i, col)| format!("{} = ${}", col, i + 1))
+                        .collect::<Vec<String>>()
+                        .join(", ")
+                } else {
+                    String::new()
+                }
+            }
+            _ => String::new(),
+        }
+    }
+}
+
+
+#[allow(dead_code)]
+enum Command {
+    Insert,
+    Update,
+    Select,
+    Delete,
 }
