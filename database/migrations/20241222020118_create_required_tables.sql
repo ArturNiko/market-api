@@ -4,7 +4,6 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TABLE "items" (
     id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name        VARCHAR(255) NOT NULL,
-    base_price  DECIMAL(10, 2) NOT NULL,
     description TEXT NOT NULL,
     created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -40,6 +39,7 @@ CREATE TABLE "orders" (
 
 CREATE TABLE "slot" (
     id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    base_price  DECIMAL(10, 2) NOT NULL,
     created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
